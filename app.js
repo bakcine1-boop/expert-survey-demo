@@ -47,6 +47,13 @@
       await Api.save(token, data);
       return data;
     },
+    async login(name, p4) {
+      // 운영 예: fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'login', name, p4 }) })
+      //   → 서버가 명부와 대조해 맞으면 그 사람의 접속 토큰만 돌려줌. 실패 횟수 제한도 서버에서 처리
+      const nn = normName(name);
+      const hit = Object.keys(S.respondents).find(t => normName(S.respondents[t].name) === nn && S.respondents[t].p4 === p4);
+      return hit || null;
+    },
     clear(token) {
       try { localStorage.removeItem(KEY(token)); } catch (e) { /* 무시 */ }
       try { sessionStorage.removeItem(SKEY); } catch (e) { /* 무시 */ }
@@ -108,6 +115,10 @@
     for (const d of ICONS[name]) { const p = document.createElementNS(NS, 'path'); p.setAttribute('d', d); s.append(p); }
     return s;
   }
+  function normName(v) { return String(v || '').normalize('NFC').replace(/[\s()（）:·.\-]/g, '').toLowerCase(); }
+  const LOCK_KEY = 'delphi2:lock';
+  function lockState() { try { return JSON.parse(localStorage.getItem(LOCK_KEY) || '{"n":0,"until":0}'); } catch (e) { return { n: 0, until: 0 }; } }
+  function setLock(v) { try { localStorage.setItem(LOCK_KEY, JSON.stringify(v)); } catch (e) { /* 무시 */ } }
   function hashStr(s) { let x = 2166136261; for (let i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 16777619); } return x >>> 0; }
   function mulberry32(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
   function shuffled(arr, seed) { const a = arr.slice(); const r = mulberry32(seed); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
@@ -723,21 +734,54 @@
     ];
   }
 
-  /* ---------- 링크 확인 화면 ---------- */
+  /* ---------- 입장 화면 (공통 주소: 이름 + 휴대폰 뒷 4자리) ---------- */
   function renderGate(invalid, msg) {
     ui.steps = null; ui.mid = null; ui.save = null; st = null;
+    const nm = h('input', { id: 'lg-name', type: 'text', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', maxlength: '40', placeholder: '예: 홍길동', 'aria-describedby': 'lg-msg' });
+    const p4 = h('input', { id: 'lg-p4', type: 'password', inputmode: 'numeric', pattern: '[0-9]*', autocomplete: 'off', maxlength: '4', placeholder: '숫자 4자리', 'aria-describedby': 'lg-msg' });
+    const msgEl = h('p', { class: 'lg-msg', id: 'lg-msg', role: 'alert' }, invalid ? '링크가 올바르지 않습니다. 아래에 이름과 휴대폰 번호 뒷 4자리를 넣어 주십시오.' : '');
+    const btn = h('button', { class: 'btn primary', type: 'submit' }, '내 설문 열기', icon('arrowR'));
+    p4.addEventListener('input', () => { p4.value = p4.value.replace(/\D/g, '').slice(0, 4); });
+    const form = h('form', { class: 'lg', novalidate: true },
+      h('div', { class: 'lg-row' },
+        h('div', null, h('label', { class: 'field-label', for: 'lg-name' }, '성명'), nm),
+        h('div', null, h('label', { class: 'field-label', for: 'lg-p4' }, '휴대폰 번호 뒷 4자리'), p4)),
+      msgEl, btn,
+      h('p', { class: 'note' }, '1차 조사 때 적어 주신 성명과 휴대폰 번호로 본인을 확인합니다. 입력한 정보는 확인에만 쓰고 저장하지 않습니다.'));
+    form.addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const lk = lockState();
+      const now = Date.now();
+      if (lk.until > now) { msgEl.textContent = `확인 시도가 여러 번 실패해 잠시 잠겼습니다. ${Math.ceil((lk.until - now) / 60000)}분 뒤 다시 시도해 주십시오.`; return; }
+      if (!nm.value.trim() || p4.value.length !== 4) { msgEl.textContent = '성명과 휴대폰 번호 뒷 4자리를 모두 입력해 주십시오.'; (nm.value.trim() ? p4 : nm).focus(); return; }
+      btn.disabled = true;
+      const t = await Api.login(nm.value, p4.value);
+      btn.disabled = false;
+      if (!t) {
+        const n = (lk.n || 0) + 1;
+        setLock(n >= 5 ? { n: 0, until: now + 5 * 60000 } : { n, until: 0 });
+        msgEl.textContent = n >= 5 ? '확인 시도가 5번 실패해 5분 동안 잠겼습니다. 정보가 맞는데도 안 되면 연구진에 문의해 주십시오.' : `일치하는 정보가 없습니다. 1차 조사 때 적은 성명과 번호인지 확인해 주십시오. (${n}/5회)`;
+        p4.value = ''; p4.focus();
+        return;
+      }
+      setLock({ n: 0, until: 0 });
+      try { sessionStorage.setItem(SKEY, t); } catch (e) { /* 무시 */ }
+      boot();
+    });
     const nodes = [];
     if (META.demo) nodes.push(demoBar());
     nodes.push(header());
-    const demoLinks = META.demo ? h('div', { class: 'demo-links' },
-      h('p', { class: 'note' }, '샘플 확인용 개인 링크 (가상 응답자 3명 · 1차 점수와 서비스 순서가 서로 다릅니다)'),
-      Object.keys(S.respondents).map(t => { const p = S.respondents[t]; return h('a', { class: 'btn', href: `#t=${t}` }, h('span', null, `${p.name} · ${p.org}`), icon('arrowR')); })) : null;
+    const demoBox = META.demo ? h('div', { class: 'demo-links' },
+      h('p', { class: 'note' }, '샘플 확인용 가상 응답자 (성명 / 뒷 4자리). 홍길동은 동명이인 2명이라 번호에 따라 다른 설문이 열립니다.'),
+      h('div', { class: 'demo-accts' }, Object.keys(S.respondents).map(t => { const p = S.respondents[t]; return h('button', { type: 'button', class: 'chip', onclick: () => { nm.value = p.name; p4.value = p.p4; nm.focus(); } }, `${p.name} / ${p.p4} · ${p.org}`); }))) : null;
     nodes.push(h('main', { id: 'main', tabindex: '-1' }, h('div', { class: 'wrap' },
       h('section', { class: 'card gate' },
-        h('h1', { id: 'pageTitle', tabindex: '-1' }, msg ? '기록을 지웠습니다' : invalid ? '유효하지 않은 링크입니다' : '개인 링크로 접속해 주십시오'),
-        h('p', null, msg || '이 조사는 전문가별 개인 링크로만 응답할 수 있습니다. 받으신 안내 메일의 링크를 다시 눌러 주십시오.'),
-        h('p', { class: 'note', style: { marginTop: '10px' } }, `문의: ${META.contact} (예시)`),
-        demoLinks))), footer());
+        h('p', { class: 'eyebrow' }, `${META.project} · ${META.title}`),
+        h('h1', { id: 'pageTitle', tabindex: '-1' }, msg ? '기록을 지웠습니다' : `${META.round} 전문가 조사`),
+        h('p', null, msg || '본인 확인 후 위원님의 1차 결과와 2차 설문이 열립니다.'),
+        msg ? null : form,
+        h('p', { class: 'note', style: { marginTop: '14px' } }, `문의: ${META.contact} (예시)`),
+        demoBox))), footer());
     app.replaceChildren(...nodes);
   }
 

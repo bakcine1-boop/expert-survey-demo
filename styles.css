@@ -468,3 +468,17 @@ footer.foot .wrap { display: flex; gap: 8px 18px; flex-wrap: wrap; }
 /* 버튼 문구 (PC: 긴 문구 / 모바일: 짧은 문구) */
 .lbl-s { display: none; }
 @media (max-width: 640px) { .lbl-l { display: none; } .lbl-s { display: inline; } }
+
+/* 입장 화면 */
+.gate .eyebrow { margin-bottom: 4px; }
+.lg { margin-top: 22px; display: grid; gap: 14px; }
+.lg-row { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; }
+.lg input { width: 100%; min-height: 52px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; background: #FBFCFD; font-size: 17px; }
+.lg input:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(14, 133, 132, .15); background: #fff; }
+.lg-msg { min-height: 0; font-size: 14px; color: var(--danger); font-weight: 600; }
+.lg-msg:empty { display: none; }
+.lg .btn { width: 100%; }
+.demo-accts { display: flex; flex-wrap: wrap; gap: 6px; }
+.demo-accts .chip { border: 1px solid var(--line); background: #fff; cursor: pointer; padding: 6px 10px; font-weight: 500; white-space: normal; text-align: left; }
+.demo-accts .chip:hover { background: var(--teal-soft); }
+@media (max-width: 640px) { .lg-row { grid-template-columns: 1fr; } }

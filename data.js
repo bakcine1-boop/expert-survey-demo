@@ -34,10 +34,12 @@ window.SURVEY = {
   ],
 
   /* 가상 응답자 (토큰 → 1차 점수). 실제 운영에서는 서버에만 있습니다. */
+  /* p4: 휴대폰 번호 뒷 4자리 (가상). 실제 운영에서는 서버에만 두고 화면 코드에는 절대 넣지 않습니다. */
   respondents: {
-    k7Qm2Xa9LpT4vRz8Nc3w: { name: '홍길동', org: '샘플기업(주) 스마트시티전략실', r1: { A: 3, B: 5, C: 5, D: 5, E: 5, F: 5 } },
-    Hy4tB8sWq2ZnE6uJm0Pd: { name: '김샘플', org: '○○대학교 도시공학과', r1: { A: 4, B: 3, C: 4, D: 2, E: 4, F: 3 } },
-    Vr1cF5gKx9DsL3oYa7Te: { name: '이예시', org: '○○시 스마트도시과', r1: { A: 5, B: 4, C: 5, D: 4, E: 3, F: 5 } }
+    k7Qm2Xa9LpT4vRz8Nc3w: { name: '홍길동', p4: '1234', org: '샘플기업(주) 스마트시티전략실', r1: { A: 3, B: 5, C: 5, D: 5, E: 5, F: 5 } },
+    Hy4tB8sWq2ZnE6uJm0Pd: { name: '김샘플', p4: '5678', org: '○○대학교 도시공학과', r1: { A: 4, B: 3, C: 4, D: 2, E: 4, F: 3 } },
+    Vr1cF5gKx9DsL3oYa7Te: { name: '이예시', p4: '9012', org: '○○시 스마트도시과', r1: { A: 5, B: 4, C: 5, D: 4, E: 3, F: 5 } },
+    Qp8nW3eRt6YuI1oPa5Sd: { name: '홍길동', p4: '4321', org: '○○연구원 디지털전환실', r1: { A: 5, B: 5, C: 4, D: 4, E: 4, F: 4 } }
   },
 
   categories: {
